@@ -10,6 +10,7 @@ import (
 	"regexp"
 
 	"github.com/MSK998/picorg/app"
+	"github.com/MSK998/picorg/internal/fswrapper"
 	"github.com/spf13/cobra"
 )
 
@@ -64,7 +65,7 @@ func Execute() {
 
 func init() {
 	var err error
-	App, err = app.New()
+	App, err = app.New(&fswrapper.OsFilesystem{})
 	if err != nil {
 		panic(err.Error())
 	}

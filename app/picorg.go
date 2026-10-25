@@ -7,6 +7,8 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+
+	"github.com/MSK998/picorg/internal/fswrapper"
 )
 
 type Picorg struct {
@@ -19,14 +21,11 @@ type Picorg struct {
 func (a *App) Picorg(picorg *Picorg) error {
 	var err error
 
-	if _, err = os.Stat(picorg.Dir); err != nil {
+	if _, err = a.Fs.Stat(picorg.Dir); err != nil {
 		return err
 	}
 
-	picorg.plannedFileMoves = getPlannedFileMoves(picorg.Dir, picorg.Regex)
-	if err != nil {
-		return err
-	}
+	picorg.plannedFileMoves = getPlannedFileMoves(a.Fs, picorg.Dir, picorg.Regex)
 
 	newDirs, err := getAllNewDirs(picorg.plannedFileMoves, picorg.Regex)
 	if err != nil {
@@ -50,7 +49,7 @@ func (a *App) Picorg(picorg *Picorg) error {
 		return err
 	}
 
-	err = moveFiles(picorg.plannedFileMoves)
+	err = moveFiles(a.Fs, picorg.plannedFileMoves)
 	if err != nil {
 		return err
 	}
@@ -81,9 +80,9 @@ func makeAllDirs(dirs map[string]int) error {
 	return nil
 }
 
-func getPlannedFileMoves(root string, regex *regexp.Regexp) map[string]string {
+func getPlannedFileMoves(filesystem fswrapper.FS, root string, regex *regexp.Regexp) map[string]string {
 	fileMap := make(map[string]string)
-	filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	filesystem.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if d.IsDir() && path != root {
 			return filepath.SkipDir
 		}
@@ -106,9 +105,9 @@ func getPlannedPath(oldPath string, r *regexp.Regexp) string {
 	return path.Join(filepath.Dir(oldPath), yM[1], yM[2], filename)
 }
 
-func moveFiles(files map[string]string) error {
+func moveFiles(filesystem fswrapper.FS, files map[string]string) error {
 	for o, n := range files {
-		err := os.Rename(o, n)
+		err := filesystem.Rename(o, n)
 		if err != nil {
 			return err
 		}
