@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"io/fs"
-	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -11,23 +10,20 @@ import (
 	"github.com/MSK998/picorg/internal/fswrapper"
 )
 
-type Picorg struct {
+type Options struct {
 	IsDryRun bool
 	Dir string
 	Regex *regexp.Regexp
-	plannedFileMoves map[string]string
 }
 
-func (a *App) Picorg(picorg *Picorg) error {
-	var err error
-
-	if _, err = a.Fs.Stat(picorg.Dir); err != nil {
+func (a *App) Picorg(picorg *Options) error {	
+	if _, err := a.Fs.Stat(picorg.Dir); err != nil {
 		return err
 	}
 
-	picorg.plannedFileMoves = getPlannedFileMoves(a.Fs, picorg.Dir, picorg.Regex)
+	plannedFileMoves := getPlannedFileMoves(a.Fs, picorg.Dir, picorg.Regex)
 
-	newDirs, err := getAllNewDirs(picorg.plannedFileMoves, picorg.Regex)
+	newDirs, err := getAllNewDirs(plannedFileMoves)
 	if err != nil {
 		return err
 	}
@@ -43,39 +39,14 @@ func (a *App) Picorg(picorg *Picorg) error {
 		return nil
 	}
 
-
-	err = makeAllDirs(newDirs)
+	err = makeAllDirs(a.Fs, newDirs)
 	if err != nil {
 		return err
 	}
 
-	err = moveFiles(a.Fs, picorg.plannedFileMoves)
+	err = moveFiles(a.Fs, plannedFileMoves)
 	if err != nil {
 		return err
-	}
-	return nil
-}
-
-func getAllNewDirs(plannedMoves map[string]string, regex *regexp.Regexp) (map[string]int, error) {
-	newDirs := make(map[string]int, 0)
-	for _, n := range plannedMoves {
-		base := filepath.Dir(n)
-		newDirs[base] += 1
-	}
-
-	return newDirs, nil
-}
-
-func makeAllDirs(dirs map[string]int) error {
-	for v := range dirs {
-		if _, err := os.Stat(v); err == nil {
-			continue
-		}
-
-		err := os.MkdirAll(v, 0750)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -103,6 +74,30 @@ func getPlannedPath(oldPath string, r *regexp.Regexp) string {
 		return oldPath
 	}
 	return path.Join(filepath.Dir(oldPath), yM[1], yM[2], filename)
+}
+
+func getAllNewDirs(plannedMoves map[string]string) (map[string]int, error) {
+	newDirs := make(map[string]int, 0)
+	for _, n := range plannedMoves {
+		base := filepath.Dir(n)
+		newDirs[base] += 1
+	}
+
+	return newDirs, nil
+}
+
+func makeAllDirs(filesystem fswrapper.FS, dirs map[string]int) error {
+	for v := range dirs {
+		if _, err := filesystem.Stat(v); err == nil {
+			continue
+		}
+
+		err := filesystem.MkDirAll(v, 0750)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func moveFiles(filesystem fswrapper.FS, files map[string]string) error {
