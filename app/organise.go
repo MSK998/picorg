@@ -6,6 +6,8 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"sync"
 
 	"github.com/MSK998/picorg/internal/fswrapper"
 )
@@ -16,7 +18,7 @@ type Options struct {
 	Regex *regexp.Regexp
 }
 
-func (a *App) Picorg(picorg *Options) error {	
+func (a *App) Organise(picorg *Options) error {	
 	if _, err := a.Fs.Stat(picorg.Dir); err != nil {
 		return err
 	}
@@ -65,6 +67,88 @@ func getPlannedFileMoves(filesystem fswrapper.FS, root string, regex *regexp.Reg
 		return nil
 	})
 	return fileMap
+}
+
+func worker(jobs <-chan string, movements map[string]string, lock *sync.Mutex, wg *sync.WaitGroup, regex *regexp.Regexp){
+	defer wg.Done()
+	for job := range jobs {
+		pp := getPlannedPath(job, regex)
+		lock.Lock()
+		movements[job] = pp
+		lock.Unlock()
+	}
+}
+
+func getPlannedFileMovesConcurrent(filesystem fswrapper.FS, root string, regex *regexp.Regexp) map[string]string {
+	jobs := make(chan string)
+	fileMap := make(map[string]string)
+	var lock sync.Mutex
+	var wg sync.WaitGroup
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go worker(jobs, fileMap, &lock, &wg, regex)
+	}
+	
+	filesystem.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() && path != root {
+			return filepath.SkipDir
+		}
+		if path == root {
+			return nil
+		}
+		jobs <- path
+		
+		return nil
+	})
+
+	close(jobs)
+	wg.Wait()
+
+	return fileMap
+}
+
+func getPlannedFileMovesBatchConcurrent(filesystem fswrapper.FS, root string, regex *regexp.Regexp) map[string]string {
+	files := make([]string, 0)
+	var wg sync.WaitGroup
+	
+	filesystem.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() && path != root {
+			return filepath.SkipDir
+		}
+		if path == root {
+			return nil
+		}
+
+		files = append(files, path)
+		return nil
+	})
+
+	planned := make([]string, len(files))
+	numProcs := runtime.GOMAXPROCS(0)
+	chunkSize := (len(files) + numProcs - 1) / numProcs
+	for start := 0; start < len(files); start += chunkSize {
+		end := start + chunkSize
+		if end > len(files) {
+			end = len(files)
+		}
+		wg.Add(1)
+		go func(start int, end int){
+			defer wg.Done()
+			for i := start; i < end; i++ {
+				planned[i] = getPlannedPath(files[i], regex)
+			}
+		}(start, end)
+	}
+
+	wg.Wait()
+
+	plannedMoves := make(map[string]string, len(planned))
+	for i, p := range files {
+		plannedMoves[p] = planned[i]
+	}
+	
+	return plannedMoves
 }
 
 func getPlannedPath(oldPath string, r *regexp.Regexp) string {

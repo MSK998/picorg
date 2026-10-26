@@ -14,7 +14,7 @@ func newTestMemFs() *MemFs {
 
 func TestMemFs_Stat(t *testing.T) {
 	mfs := newTestMemFs()
-	mfs.addFile("photos/01-02-beach.jpg", []byte("data"))
+	mfs.AddFile("photos/01-02-beach.jpg", []byte("data"))
 
 	t.Run("existing file", func(t *testing.T) {
 		info, err := mfs.Stat("photos/01-02-beach.jpg")
@@ -82,7 +82,7 @@ func TestMemFs_MkDirAll(t *testing.T) {
 func TestMemFs_Rename(t *testing.T) {
 	t.Run("rename file", func(t *testing.T) {
 		mfs := newTestMemFs()
-		mfs.addFile("old.txt", []byte("data"))
+		mfs.AddFile("old.txt", []byte("data"))
 
 		if err := mfs.Rename("old.txt", "new.txt"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -102,8 +102,8 @@ func TestMemFs_Rename(t *testing.T) {
 
 	t.Run("rename directory with children", func(t *testing.T) {
 		mfs := newTestMemFs()
-		mfs.addFile("old/a.txt", []byte("1"))
-		mfs.addFile("old/sub/b.txt", []byte("2"))
+		mfs.AddFile("old/a.txt", []byte("1"))
+		mfs.AddFile("old/sub/b.txt", []byte("2"))
 
 		if err := mfs.Rename("old", "new"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -133,9 +133,9 @@ func TestMemFs_Rename(t *testing.T) {
 func TestMemFs_WalkDir(t *testing.T) {
 	t.Run("walks in sorted order", func(t *testing.T) {
 		mfs := newTestMemFs()
-		mfs.addFile("root/b.txt", []byte("2"))
-		mfs.addFile("root/a.txt", []byte("1"))
-		mfs.addFile("root/sub/c.txt", []byte("3"))
+		mfs.AddFile("root/b.txt", []byte("2"))
+		mfs.AddFile("root/a.txt", []byte("1"))
+		mfs.AddFile("root/sub/c.txt", []byte("3"))
 
 		var paths []string
 		err := mfs.WalkDir("root", func(path string, d fs.DirEntry, err error) error {
@@ -154,8 +154,8 @@ func TestMemFs_WalkDir(t *testing.T) {
 
 	t.Run("skip dir", func(t *testing.T) {
 		mfs := newTestMemFs()
-		mfs.addFile("root/sub/c.txt", []byte("3"))
-		mfs.addFile("root/a.txt", []byte("1"))
+		mfs.AddFile("root/sub/c.txt", []byte("3"))
+		mfs.AddFile("root/a.txt", []byte("1"))
 
 		var paths []string
 		err := mfs.WalkDir("root", func(path string, d fs.DirEntry, err error) error {

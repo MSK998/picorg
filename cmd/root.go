@@ -43,7 +43,7 @@ groups that have been set within the regex defined.
 			os.Exit(2)
 		}
 
-		err = App.Picorg(&app.Options{
+		err = App.Organise(&app.Options{
 			IsDryRun: drFlag,
 			Dir: dir,
 			Regex: regexp.MustCompile(`^(\d{2})-(\d{2})`),

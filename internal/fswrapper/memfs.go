@@ -14,7 +14,13 @@ type MemFs struct {
 	files map[string]*MemFile
 }
 
-func (mfs *MemFs) addFile(path string, content []byte) {
+func NewMemFs() *MemFs{
+	return &MemFs{
+		files: make(map[string]*MemFile),
+	}
+}
+
+func (mfs *MemFs) AddFile(path string, content []byte) {
 	fp := filepath.Clean(path)
 	mfs.files[fp] = &MemFile{
 		name:    filepath.Base(fp),
