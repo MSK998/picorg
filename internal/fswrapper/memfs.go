@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+// Simple in memory filesystem, intended for testing only. 
+// Probably not a good idea for anything real.
 type MemFs struct {
 	files map[string]*MemFile
 }
@@ -20,6 +22,7 @@ func NewMemFs() *MemFs{
 	}
 }
 
+// Small helper to add a file to the FS
 func (mfs *MemFs) AddFile(path string, content []byte) {
 	fp := filepath.Clean(path)
 	mfs.files[fp] = &MemFile{

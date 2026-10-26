@@ -53,6 +53,7 @@ func (a *App) Organise(picorg *Options) error {
 	return nil
 }
 
+// A sequential, single threaded implementation
 func getPlannedFileMoves(filesystem fswrapper.FS, root string, regex *regexp.Regexp) map[string]string {
 	fileMap := make(map[string]string)
 	filesystem.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -79,6 +80,7 @@ func worker(jobs <-chan string, movements map[string]string, lock *sync.Mutex, w
 	}
 }
 
+// A channel based concurrent implementation ~45% slower than the sequential (based on benchmarks)
 func getPlannedFileMovesConcurrent(filesystem fswrapper.FS, root string, regex *regexp.Regexp) map[string]string {
 	jobs := make(chan string)
 	fileMap := make(map[string]string)
@@ -108,6 +110,8 @@ func getPlannedFileMovesConcurrent(filesystem fswrapper.FS, root string, regex *
 	return fileMap
 }
 
+// A batched concurrent implementation, splits the work evenly between the set number of goroutines
+// this approach avoids races, or locks by only giving the goroutines access to chunks of the result.
 func getPlannedFileMovesBatchConcurrent(filesystem fswrapper.FS, root string, regex *regexp.Regexp) map[string]string {
 	files := make([]string, 0)
 	var wg sync.WaitGroup

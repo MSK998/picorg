@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 )
 
+// Custom FS abstraction for the sake of testing.
 type FS interface {
 	Stat(name string) (os.FileInfo, error)
 	MkDirAll(path string, perm os.FileMode) error
@@ -13,6 +14,7 @@ type FS interface {
 	WalkDir(root string, fn fs.WalkDirFunc) error
 }
 
+// Uses real OS filesystem 
 type OsFilesystem struct{}
 
 func (of *OsFilesystem) Stat(name string) (os.FileInfo, error) {
